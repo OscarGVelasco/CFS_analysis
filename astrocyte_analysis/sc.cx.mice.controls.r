@@ -7,7 +7,7 @@ library(dplyr)
 library(ggplot2)
 library(biomaRt)
 library(SingleR)
-MASTERPATH <- "/omics/groups/OE0436/internal/o872o/KIF5A_analysis/"
+MASTERPATH <- "/SET_FOLDER/"
 setwd(MASTERPATH)
 PATH="cellRanger_data/"
 
@@ -20,7 +20,7 @@ sc_26 <- Read10X(data.dir = paste0(MASTERPATH,PATH,"26_sc/"))
 pheno26 <- data.frame(stringsAsFactors = F,row.names = colnames(sc_26),mouse = rep("26_sc",ncol(sc_26)),status= rep("Control",ncol(sc_26)))
 sc_26 <- Seurat::CreateSeuratObject(counts = sc_26,meta.data = pheno26)
 # Sample 36
-sc_36 <- Read10X(data.dir = paste0(MASTERPATH,PATH,"36/"))
+sc_36 <- Read10X(data.dir = paste0(MASTERPATH,PATH,"36_sc/"))
 pheno36 <- data.frame(stringsAsFactors = F,row.names = colnames(sc_36),mouse = rep("36_sc",ncol(sc_36)),status= rep("Control",ncol(sc_36)))
 sc_36 <- Seurat::CreateSeuratObject(counts = sc_36,meta.data = pheno36)
 # Sample 699
@@ -133,9 +133,9 @@ Seurat::DimPlot(sc_list2[[6]])
 names(sc_list2) <- c("sc.36","sc.26","sc.699","cx.36","cx.26","cx.699")
 
 ######################### - Save Point - ##########################
-# save(sc_list2, file = paste0("/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/","mice.Kif5a.controls.data.cortex.spinalcord.processed.6.samples.RData"))
+# save(sc_list2, file = paste0("/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/","mice.controls.data.cortex.spinalcord.processed.6.samples.RData"))
 ######################### - Save Point - ##########################
-fileName <- load(file = paste0("/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/","mice.Kif5a.controls.data.cortex.spinalcord.processed.6.samples.RData"));fileName
+fileName <- load(file = paste0("/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/","mice.controls.data.cortex.spinalcord.processed.6.samples.RData"));fileName
 sprintf(fileName)
 
 table(sc_list2[[1]]@meta.data$seurat_clusters) *1/3
@@ -494,7 +494,7 @@ violin.per.clusters <- function(obj,clust,gene){
 #############################################
 # PLOT of group 3 by gene expression Sub-group
 #       LOW Exprs.      >>.      Med. Exprs.        >>.      High Exprs.
-gene <- "Gpc5" # Works nice
+gene <- "Gpc5"
 gene <- "Gria2"
 gene <- "Vav3"
 gene <- "Eps8"

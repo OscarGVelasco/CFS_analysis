@@ -34,8 +34,8 @@ source("/home/o872o/o872o/cluster_similarity_sc/review/initialice.R")
 fname <- load(file = paste0(PATH,"gastrulation.mouse.data.RData")); fname
 ####### LOAD POINT ########
 
-pheno.e8 <- colData(sc.gastro) %>% as.data.frame() %>% dplyr::filter(stage == "E8.0")
-samples = sc.gastro$sample[sc.gastro$stage == "E8.0"]
+pheno.e8 <- colData(sc.gastro) %>% as.data.frame() %>% dplyr::filter(stage == "E8.5")
+samples = sc.gastro$sample[sc.gastro$stage == "E8.5"]
 
 atlas = MouseGastrulationData::EmbryoAtlasData(type = "processed", samples = unique(samples))
 atlas <- logNormCounts(atlas)
@@ -49,19 +49,19 @@ logcounts(atlas) <- as(logcounts(atlas, withDimnames = FALSE), "CsparseMatrix")
 
 atlas_seu <- Seurat::as.Seurat(atlas)
 atlas_seu <- atlas_seu[,!is.na(atlas_seu$celltype)]
-atlas_seu <- FindVariableFeatures(atlas_seu, selection.method = "vst", nfeatures = 1500)
+atlas_seu <- FindVariableFeatures(atlas_seu, selection.method = "vst", nfeatures = 4000)
 atlas_seu <- ScaleData(atlas_seu, features = VariableFeatures(atlas_seu))
 atlas_seu <- RunPCA(atlas_seu, features = VariableFeatures(object = atlas_seu))
 atlas_seu <- RunUMAP(atlas_seu, features = VariableFeatures(object = atlas_seu))
 atlas_seu <- FindNeighbors(atlas_seu, dims = seq(25))
 atlas_seu <- FindClusters(atlas_seu, resolution = 4)
 
-atlas_seu_8_0 <- atlas_seu
+atlas_seu_8_5 <- atlas_seu
 # ####### SAVE POINT ########
-save(atlas_seu_8_0, file = paste0(PATH,"gastrulation.mouse.8.0.data.Seurat.atlas.1500.features.RData"))
+save(atlas_seu_8_5, file = paste0(PATH,"gastrulation.mouse.8.5.data.Seurat.atlas.1500.features.RData"))
 # ####### SAVE POINT ########
 
-atlas_seu_8_0=NULL
+atlas_seu_8_5=NULL
 atlas=NULL
 gc(reset = T, full = T)
 
@@ -110,7 +110,7 @@ for (sim in names(nGenes_all)) {
     nPCs = 20
     k.param = 30
   } else {
-    nPCs = 20
+    nPCs = 40
     k.param = 20
   }
   
@@ -128,7 +128,7 @@ for (sim in names(nGenes_all)) {
               res[,"referenceSample"] == referenceSample)) next
       
       # select HVGs from the referenceSCE and subset
-      hvgs <- Seurat::VariableFeatures(atlas_seu)[1:1500]
+      hvgs <- Seurat::VariableFeatures(atlas_seu)[1:2000]
       genes = sample(hvgs, size = nGenes)
       referenceSCE = atlas_seu[,atlas_seu$sample %in% referenceSample]
       referenceSCE <- Seurat::NormalizeData(referenceSCE)
@@ -138,10 +138,10 @@ for (sim in names(nGenes_all)) {
       querySCE = atlas_seu[, atlas_seu$sample %in% querySample]
       querySCE <- Seurat::NormalizeData(querySCE)
       querySCE <- Seurat::ScaleData(querySCE)
-      querySCE <- RunPCA(querySCE, features = VariableFeatures(object = querySCE), npcs = 30)
+      querySCE <- RunPCA(querySCE, features = VariableFeatures(object = querySCE), npcs = nPCs)
       querySCE <- RunUMAP(querySCE, features = VariableFeatures(object = querySCE))
-      querySCE <- FindNeighbors(querySCE, dims = seq(15), k.param = 20)  
-      querySCE <- FindClusters(querySCE, resolution = 2.5, method = 4)
+      querySCE <- FindNeighbors(querySCE, dims = seq(nPCs), k.param = k.param)
+      querySCE <- FindClusters(querySCE, resolution = 3.5, method = 4)
       querySCE <- querySCE[genes,]
       # Compute base accuracy by cluster 
       querySCE@meta.data$assign = ""
@@ -161,7 +161,7 @@ for (sim in names(nGenes_all)) {
       assayNames = list(Reference = assayNameReference, Query = assayNameQuery)
       Idents(SCE_list[[1]]) <- SCE_list[[1]]$celltype
       Idents(SCE_list[[2]]) <- SCE_list[[2]]$seurat_clusters
-      sim.results <- ClusterFoldSimilarity::clusterFoldSimilarity(scList = SCE_list, sampleNames = names(SCE_list), parallel = T, nSubsampling = 25)
+      sim.results <- ClusterFoldSimilarity::clusterFoldSimilarity(scList = SCE_list, sampleNames = names(SCE_list), parallel = T, nSubsampling = 20)
       
       sim.community <- ClusterFoldSimilarity::findCommunitiesSimmilarity(sim.results)
       
@@ -318,3 +318,39 @@ for (sim in names(nGenes_all)) {
     }
   }
 }
+
+
+
+
+####### Plot
+res.t <- res
+res.t$type <- factor(res.t$type)
+res.t$genes <- factor(res.t$genes)
+res.t$referenceSample <- factor(res.t$referenceSample)
+
+ggplot(res.t, aes(x=genes, y=Accuracy, fill = type, color=type)) +
+  geom_boxplot() +
+  theme_minimal() +
+  xlab("n. of genes") +
+  #ylim(0.25,1) +
+  ggplot2::scale_y_continuous(breaks =  seq(0.30, 1, by=0.1), labels = as.character(seq(0.30, 1, by=0.1))) +
+  scale_fill_manual(values = RColorBrewer::brewer.pal(length(levels(res.t$type)), "Pastel1")) +# Pastel2
+  scale_color_manual(values = RColorBrewer::brewer.pal(length(levels(res.t$type)), "Pastel1")) # Pastel2
+
+# check specific sims
+#res.t %>% dplyr::filter(genes==1500 & type == "ClusterFoldSimilarity") %>% summarise(mean(Accuracy))
+#res.t %>% dplyr::filter(genes==1500 & type == "ClusterFoldSimilarity") %>% pull(Accuracy) %>% summary()
+# Barplot with means
+means.all <- res.t %>% group_by(type, genes) %>% summarise(accuracy=mean(Accuracy), sd=sd(Accuracy)/sqrt(length(Accuracy)))
+pdf(file = "/Users/oscargonzalezvelasco/Desktop/ClusterFoldSimilarity/review/barplot.means.gastrulation.acc.pdf", width = 10,height = 2.2)
+g <- ggplot(means.all, aes(x=genes, y=accuracy, fill = type)) +
+  geom_bar(stat="identity", position = "dodge") +
+  theme_minimal() +
+  xlab("n. of genes") +
+  #ylim(0.25,1) +
+  ggplot2::geom_errorbar( aes(x=genes, ymin=accuracy-sd, ymax=accuracy+sd), 
+                          width=0.4, colour="grey", alpha=0.9, position=position_dodge(.9), linewidth=0.5) +
+  ggplot2::scale_y_continuous(breaks =  seq(0.30, 1, by=0.1), labels = as.character(seq(0.30, 1, by=0.1))) +
+  scale_fill_manual(values = RColorBrewer::brewer.pal(length(levels(res.t$type)), "Pastel1")) # Pastel2
+print(g)
+dev.off()
