@@ -16,14 +16,14 @@
 # install.packages("leidenAlg")
 
 
-PATH <- "/home/o872o/o872o/cluster_similarity_sc/review/"
+PATH <- "cluster_similarity_sc/"
 setwd(PATH)
 library(dplyr)
 library(scran)
 library(bluster)
 library(Seurat)
 
-source("/home/o872o/o872o/cluster_similarity_sc/review/initialice.R")
+source("cluster_similarity_sc/initialice.R")
 
 # sc.gastro <- MouseGastrulationData::EmbryoAtlasData()
 ####### SAVE POINT ########
@@ -66,7 +66,7 @@ atlas=NULL
 gc(reset = T, full = T)
 
 ####### LOAD POINT ########
-# fname <- load(file = paste0(PATH,"gastrulation.mouse.8.0.data.Seurat.atlas.1500.features.RData"));fname
+# fname <- load(file = paste0(PATH,"gastrulation.mouse.8.5.data.Seurat.atlas.1500.features.RData"));fname
 # atlas_seu <- atlas_seu_8_0
 ####### LOAD POINT ########
 
@@ -86,7 +86,7 @@ doUMAP = FALSE
 # devtools::install_github("MarioniLab/StabMap")
 ###
 
-resFile = paste0(PATH,"mouse.gastrulation.benchmark.results.res2.5.pc15.1.5kfeats.seed.04022025.Rds")
+resFile = paste0(PATH,"mouse.gastrulation.benchmark.results.res2.5.pc15.1.5kfeats.seed.29072024.Rds")
 
 if (!file.exists(resFile)) {
   res = NULL
@@ -99,7 +99,7 @@ library(Seurat)
 embeddings_names=""
 
 ######### SETTING SEED FOR REPRODUCIBILITY
-set.seed(04022025)
+set.seed(29072024)
 ######### SETTING SEED FOR REPRODUCIBILITY
 
 for (sim in names(nGenes_all)) {
@@ -328,21 +328,9 @@ res.t$type <- factor(res.t$type)
 res.t$genes <- factor(res.t$genes)
 res.t$referenceSample <- factor(res.t$referenceSample)
 
-ggplot(res.t, aes(x=genes, y=Accuracy, fill = type, color=type)) +
-  geom_boxplot() +
-  theme_minimal() +
-  xlab("n. of genes") +
-  #ylim(0.25,1) +
-  ggplot2::scale_y_continuous(breaks =  seq(0.30, 1, by=0.1), labels = as.character(seq(0.30, 1, by=0.1))) +
-  scale_fill_manual(values = RColorBrewer::brewer.pal(length(levels(res.t$type)), "Pastel1")) +# Pastel2
-  scale_color_manual(values = RColorBrewer::brewer.pal(length(levels(res.t$type)), "Pastel1")) # Pastel2
-
-# check specific sims
-#res.t %>% dplyr::filter(genes==1500 & type == "ClusterFoldSimilarity") %>% summarise(mean(Accuracy))
-#res.t %>% dplyr::filter(genes==1500 & type == "ClusterFoldSimilarity") %>% pull(Accuracy) %>% summary()
 # Barplot with means
 means.all <- res.t %>% group_by(type, genes) %>% summarise(accuracy=mean(Accuracy), sd=sd(Accuracy)/sqrt(length(Accuracy)))
-pdf(file = "/Users/oscargonzalezvelasco/Desktop/ClusterFoldSimilarity/review/barplot.means.gastrulation.acc.pdf", width = 10,height = 2.2)
+pdf(file = "/ClusterFoldSimilarity/barplot.means.gastrulation.acc.pdf", width = 10,height = 2.2)
 g <- ggplot(means.all, aes(x=genes, y=accuracy, fill = type)) +
   geom_bar(stat="identity", position = "dodge") +
   theme_minimal() +

@@ -15,17 +15,17 @@
 # install.packages("Seurat")
 # install.packages("leidenAlg")
 
-PATH <- "/home/o872o/o872o/cluster_similarity_sc/review/"
+PATH <- "/cluster_similarity_sc/"
 setwd(PATH)
 library(dplyr)
 library(scran)
 library(bluster)
 library(Seurat)
 
-source("/home/o872o/o872o/cluster_similarity_sc/review/initialice.R")
+source("/cluster_similarity_sc/initialice.R")
 
 # Load the Pancreas single-cell objects
-fname <- load("/home/o872o/o872o/cluster_similarity_sc/rdata/Pancreas_sc_objects_list_processed.RData");fname
+fname <- load("/cluster_similarity_sc/rdata/Pancreas_sc_objects_list_processed.RData");fname
 # Select common cell types for comparison
 cellstypes <- names(table(sc_list_input[[1]]@colData$cell.type))[names(table(sc_list_input[[1]]@colData$cell.type)) %in% names(table(sc_list_input[[2]]@colData$cell.type))]
 
@@ -37,12 +37,12 @@ seu2 <- Seurat::as.Seurat(seu2[,seu2$cell.type %in% cellstypes],data = NULL)
 
 ######################################
 ######################################
-pancreas_list <- list(seu1, seu2)
-samples = c("pancreas_large", "pancreas_small")
+pancreas_list <- list(seu2, seu1)
+samples = c("pancreas_small","pancreas_large")
 names(pancreas_list) <- samples
 # Get variable features:
-vfeat <- lapply(pancreas_list, function(x){Seurat::VariableFeatures(Seurat::FindVariableFeatures(x, nfeatures=4000))})
-hvgs <- intersect(vfeat[[1]], vfeat[[2]])[1:1500]
+vfeat <- lapply(pancreas_list, function(x){Seurat::VariableFeatures(Seurat::FindVariableFeatures(x, nfeatures=4500))})
+hvgs <- intersect(vfeat[[1]], vfeat[[2]])[1:2000];tail(hvgs)
 
 k = 8
 labels = "cell.type"
@@ -51,8 +51,12 @@ nGenes_all <- rep(nGenes_all, each=6)
 names(nGenes_all) <- paste0("Sim_", seq_len(length(nGenes_all)))
 
 labels = "cell.type"
+assayNameReference = "logcounts"
+assayNameQuery = "logcounts"
+doUMAP = FALSE
 
-resFile = paste0(PATH,"pancreas.benchmark.results.CORRS.res2.pc15.1.5kfeats.seed.04022025.Rds")
+
+resFile = paste0(PATH,"pancreas.benchmark.results.CORRS.res2.pc15.1.5kfeats.seed.01022025.Rds")
 
 if (!file.exists(resFile)) {
   res = NULL
@@ -63,13 +67,30 @@ if (!file.exists(resFile)) {
 BiocParallel::register(BPPARAM =  BiocParallel::MulticoreParam(workers = 16))
 library(Seurat)
 embeddings_names=""
+
 ######### SETTING SEED FOR REPRODUCIBILITY
-set.seed(04022025)
+set.seed(01022025) # Same seed as in the pancreas integration benchmark
 ######### SETTING SEED FOR REPRODUCIBILITY
+
+# Pre-select genes with seed above
+selected_genes <- lapply(nGenes_all, function(n)sample(hvgs, size = n));names(selected_genes)
 
 for (sim in names(nGenes_all)) {
   
   nGenes = nGenes_all[sim]
+  # As defined in the original benchmark paper
+  if (nGenes <= 100) {
+    nPCs = 20
+    k.param = 30
+  } else {
+    nPCs = 30
+    k.param = 20
+  }
+  if (nGenes > 500) {
+    resolut = 2
+  } else {
+    resolut = 1.8
+  }
   
   for (querySample in unique(samples)) {
     
@@ -85,36 +106,30 @@ for (sim in names(nGenes_all)) {
               res[,"referenceSample"] == referenceSample)) next
       
       # select HVGs from the referenceSCE and subset
-      #decomp <- modelGeneVar(referenceSCE)
-      #decomp <- Seurat::VariableFeatures(atlas_seu)[1:1500]
-      #hvgs <- rownames(decomp)[decomp$mean > 0.05 & decomp$bio > 0]
-      #hvgs <- decomp
-      # genes = sample(hvgs, size = nGenes)
-      # referenceSCE = atlas_seu[,atlas_seu$sample %in% referenceSample]
-      genes = sample(hvgs)[seq_len(nGenes)]
+      # hvgs - defined at the beginning
+      genes = selected_genes[[sim]]
       referenceSCE = pancreas_list[[referenceSample]]
       referenceSCE <- Seurat::NormalizeData(referenceSCE)
       referenceSCE <- Seurat::ScaleData(referenceSCE)
-      #referenceSCE <- RunPCA(referenceSCE, features = VariableFeatures(object = referenceSCE), npcs = 30)
       referenceSCE <- referenceSCE[genes,]
       # select random genes from among the HVGs for the query data
       querySCE = pancreas_list[[querySample]]
-      #querySCE = atlas_seu[, atlas_seu$sample %in% querySample]
       querySCE <- Seurat::NormalizeData(querySCE)
       querySCE <- Seurat::ScaleData(querySCE)
       querySCE <- Seurat::FindVariableFeatures(querySCE)
-      querySCE <- RunPCA(querySCE, features = VariableFeatures(object = querySCE), npcs = 30)
+      querySCE <- RunPCA(querySCE, features = VariableFeatures(object = querySCE), npcs = nPCs)
       querySCE <- RunUMAP(querySCE, features = VariableFeatures(object = querySCE))
-      querySCE <- FindNeighbors(querySCE, dims = seq(15), k.param = 20)
-      querySCE <- FindClusters(querySCE, resolution = 2, method = 4)
-      
+      querySCE <- FindNeighbors(querySCE, dims = seq(nPCs), k.param = k.param)
+      querySCE <- FindClusters(querySCE, resolution = resolut, method = 4)
       querySCE <- querySCE[genes,]
+      
       # Compute base accuracy by cluster 
       querySCE@meta.data$assign = ""
       for (cls in unique(querySCE@meta.data$seurat_clusters)){
         ccount <- table(querySCE@meta.data$cell.type[querySCE@meta.data$seurat_clusters == cls])
         querySCE@meta.data$assign[querySCE@meta.data$seurat_clusters == cls] <- names(which.max(ccount))
       }
+      # Base accuracy
       sum(querySCE@meta.data$assign == querySCE@meta.data$cell.type) / nrow(querySCE@meta.data)
       
       # data type factor
@@ -127,14 +142,13 @@ for (sim in names(nGenes_all)) {
       assayNames = list(Reference = assayNameReference, Query = assayNameQuery)
       Idents(SCE_list[[1]]) <- SCE_list[[1]]$cell.type
       Idents(SCE_list[[2]]) <- SCE_list[[2]]$seurat_clusters
+      # Apply CFS
       sim.results <- ClusterFoldSimilarity::clusterFoldSimilarity(scList = SCE_list, sampleNames = names(SCE_list), parallel = T, nSubsampling = 25)
       
-      sim.community <- ClusterFoldSimilarity::findCommunitiesSimmilarity(sim.results)
-      
+      # Assign cell type to clusters
       tmp1 <- sim.results[sim.results$datasetL == "Query",c("clusterL","clusterR")]
       tmp2 <- querySCE@meta.data[,c("seurat_clusters", "cell.type")]
       tmp2$assign = ""
-      
       for(i in 1:nrow(tmp1)){
         tmp2$assign[tmp2$seurat_clusters == as.numeric(tmp1[i,1])] = tmp1[i,2]
       }

@@ -1,11 +1,15 @@
-PATH <- "cluster_similarity_sc/review/"
-setwd(PATH)
 library(dplyr)
+library(scran)
+library(bluster)
+library(Seurat)
 # devtools::install_github("MarioniLab/StabMap")
-source("cluster_similarity_sc/review/initialice.R")
+source("/cluster_similarity_sc/initialice.R")
 
-# Load Seurat pancreas data sets
-fname <- load("cluster_similarity_sc/rdata/Pancreas_sc_objects_list_processed.RData");fname
+PATH <- "/cluster_similarity_sc/"
+setwd(PATH)
+
+# Load pancreas data sets
+fname <- load("/cluster_similarity_sc/rdata/Pancreas_sc_objects_list_processed.RData");fname
 
 # Find and subset common cell types
 cellstypes <- names(table(sc_list_input[[1]]@colData$cell.type))[names(table(sc_list_input[[1]]@colData$cell.type)) %in% names(table(sc_list_input[[2]]@colData$cell.type))]
@@ -18,18 +22,18 @@ seu2 <- Seurat::as.Seurat(seu2[,seu2$cell.type %in% cellstypes],data = NULL)
 
 ######################################
 ######################################
-pancreas_list <- list(seu1, seu2)
-samples = c("pancreas_large", "pancreas_small")
+pancreas_list <- list(seu2, seu1)
+samples = c("pancreas_small","pancreas_large")
 names(pancreas_list) <- samples
 # Get variable features:
-vfeat <- lapply(pancreas_list, function(x){Seurat::VariableFeatures(Seurat::FindVariableFeatures(x, nfeatures=5000))})
+vfeat <- lapply(pancreas_list, function(x){Seurat::VariableFeatures(Seurat::FindVariableFeatures(x, nfeatures=4500))})
 hvgs <- intersect(vfeat[[1]], vfeat[[2]])[1:2000];tail(hvgs)
 
 k = 8
 labels = "cell.type"
 acc_df_all = NULL
 nGenes_all = c(25, 50, 100, 250, 500, 1000, 1500)
-nGenes_all <- rep(nGenes_all, each=4)
+nGenes_all <- rep(nGenes_all, each=6)
 names(nGenes_all) <- paste0("Sim_", seq_len(length(nGenes_all)))
 
 labels = "cell.type"
@@ -37,7 +41,7 @@ assayNameReference = "logcounts"
 assayNameQuery = "logcounts"
 doUMAP = FALSE
 
-resFile = paste0(PATH,"mouse.pancreas.benchmark.results.res.1.8and3.seed.03022025.Rds")
+resFile = paste0(PATH,"mouse.pancreas.benchmark.results.res.1.8and2.seed.01022025.2.Rds")
 
 if (!file.exists(resFile)) {
   res = NULL
@@ -50,9 +54,11 @@ library(Seurat)
 embeddings_names=""
 
 ######### SETTING SEED FOR REPRODUCIBILITY
-set.seed(03022025)
+set.seed(01022025)
 ######### SETTING SEED FOR REPRODUCIBILITY
-gc(reset = T, full = T)
+
+# Pre-select genes with seed above
+selected_genes <- lapply(nGenes_all,function(n)sample(hvgs, size = n));names(selected_genes)
 
 for (sim in names(nGenes_all)) {
   
@@ -62,11 +68,11 @@ for (sim in names(nGenes_all)) {
     nPCs = 20
     k.param = 30
   } else {
-    nPCs = 40
+    nPCs = 30
     k.param = 20
   }
   if (nGenes > 500) {
-    resolut = 3
+    resolut = 2
   } else {
     resolut = 1.8
   }
@@ -86,28 +92,29 @@ for (sim in names(nGenes_all)) {
       
       # select HVGs from the referenceSCE and subset
       # hvgs - defined at the beginning
-      genes = sample(hvgs, size = nGenes)
+      genes = selected_genes[[sim]]
       referenceSCE = pancreas_list[[referenceSample]]
       referenceSCE <- Seurat::NormalizeData(referenceSCE)
       referenceSCE <- Seurat::ScaleData(referenceSCE)
-      referenceSCE <- Seurat::FindVariableFeatures(referenceSCE)
-      #referenceSCE <- RunPCA(referenceSCE, features = VariableFeatures(object = referenceSCE), npcs = 30)
-      referenceSCE <- referenceSCE[hvgs,]
+      referenceSCE <- referenceSCE[genes,]
       # select random genes from among the HVGs for the query data
       querySCE = pancreas_list[[querySample]]
       querySCE <- Seurat::NormalizeData(querySCE)
       querySCE <- Seurat::ScaleData(querySCE)
       querySCE <- Seurat::FindVariableFeatures(querySCE)
-      querySCE <- RunPCA(querySCE, features = VariableFeatures(object = querySCE), npcs = nPCs)        
+      querySCE <- RunPCA(querySCE, features = VariableFeatures(object = querySCE), npcs = nPCs)
+      querySCE <- RunUMAP(querySCE, features = VariableFeatures(object = querySCE))
       querySCE <- FindNeighbors(querySCE, dims = seq(nPCs), k.param = k.param) 
       querySCE <- FindClusters(querySCE, resolution = resolut, method = 4)
       querySCE <- querySCE[genes,]
+      
       # Compute base accuracy by cluster 
       querySCE@meta.data$assign = ""
       for (cls in unique(querySCE@meta.data$seurat_clusters)){
         ccount <- table(querySCE@meta.data$cell.type[querySCE@meta.data$seurat_clusters == cls])
         querySCE@meta.data$assign[querySCE@meta.data$seurat_clusters == cls] <- names(which.max(ccount))
       }
+      # Base accuracy
       sum(querySCE@meta.data$assign == querySCE@meta.data$cell.type) / nrow(querySCE@meta.data)
       
       # data type factor
@@ -120,16 +127,17 @@ for (sim in names(nGenes_all)) {
       assayNames = list(Reference = assayNameReference, Query = assayNameQuery)
       Idents(SCE_list[[1]]) <- SCE_list[[1]]$cell.type
       Idents(SCE_list[[2]]) <- SCE_list[[2]]$seurat_clusters
-      sim.results <- ClusterFoldSimilarity::clusterFoldSimilarity(scList = SCE_list, sampleNames = names(SCE_list), parallel = T, nSubsampling = 24)
+      # Apply CFS
+      sim.results <- ClusterFoldSimilarity::clusterFoldSimilarity(scList = SCE_list, sampleNames = names(SCE_list), parallel = T, nSubsampling = 25)
+      
       # Assign cell type to clusters
       tmp1 <- sim.results[sim.results$datasetL == "Query",c("clusterL","clusterR")]
       tmp2 <- querySCE@meta.data[,c("seurat_clusters", "cell.type")]
       tmp2$assign = ""
-      
       for(i in 1:nrow(tmp1)){
         tmp2$assign[tmp2$seurat_clusters == as.numeric(tmp1[i,1])] = tmp1[i,2]
       }
-      
+      # Accuracy - CFS      
       acc_clusterFoldSim = sum(tmp2$cell.type == tmp2$assign)/nrow(tmp2);acc_clusterFoldSim
 
       # Seurat Integration
@@ -167,7 +175,7 @@ for (sim in names(nGenes_all)) {
       dim(MultiMAP_embedding)
       embeddings_names <- c(embeddings_names, MultiMap="MultiMAP_embedding")
       
-      nobatch = c("MultiMAP_embedding","Seurat_embedding")
+      nobatch = c("MultiMAP_embedding","Seurat_embedding")#, "UINMF_embedding")
       noumap = c("MultiMAP_embedding")
       
       library(Seurat)
@@ -270,7 +278,7 @@ res.t$genes <- as.character(res.t$genes)
 res.t$genes <- factor(res.t$genes, levels = unique(res.t$genes))
 res.t$referenceSample <- factor(res.t$referenceSample)
 means.all <- res.t %>% dplyr::group_by(type, genes) %>% summarise(accuracy=mean(Accuracy),sd=sd(Accuracy)/sqrt(length(Accuracy)))
-pdf(file = "/Users/oscargonzalezvelasco/Desktop/ClusterFoldSimilarity/review/barplot.means.pancreas.acc.corr.distance.pdf", width = 10,height = 2.2)
+pdf(file = "/ClusterFoldSimilarity/barplot.means.pancreas.acc.corr.distance.pdf", width = 10,height = 2.2)
 g <- ggplot(means.all, aes(x=genes, y=accuracy, fill = type)) +
   geom_bar(stat="identity", position = "dodge") +
   theme_minimal() +
