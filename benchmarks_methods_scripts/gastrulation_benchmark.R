@@ -16,14 +16,14 @@
 # install.packages("leidenAlg")
 
 
-PATH <- "cluster_similarity_sc/"
+PATH <- "/home/o872o/o872o/cluster_similarity_sc/review/"
 setwd(PATH)
 library(dplyr)
 library(scran)
 library(bluster)
 library(Seurat)
 
-source("cluster_similarity_sc/initialice.R")
+source("/home/o872o/o872o/cluster_similarity_sc/review/initialice.R")
 
 # sc.gastro <- MouseGastrulationData::EmbryoAtlasData()
 ####### SAVE POINT ########
@@ -58,7 +58,7 @@ atlas_seu <- FindClusters(atlas_seu, resolution = 4)
 
 atlas_seu_8_5 <- atlas_seu
 # ####### SAVE POINT ########
-save(atlas_seu_8_5, file = paste0(PATH,"gastrulation.mouse.8.5.data.Seurat.atlas.1500.features.RData"))
+#save(atlas_seu_8_5, file = paste0(PATH,"gastrulation.mouse.8.5.data.Seurat.atlas.1500.features.RData"))
 # ####### SAVE POINT ########
 
 atlas_seu_8_5=NULL
@@ -74,7 +74,7 @@ samples = unique(atlas_seu$sample)
 k = 8
 acc_df_all = NULL
 nGenes_all = c(25, 50, 100, 250, 500, 1000, 1500)
-nGenes_all = rep(nGenes_all, each=3)
+nGenes_all = rep(nGenes_all, each=2)
 names(nGenes_all) <- paste0("Sim_", seq_len(length(nGenes_all)))
 
 labels = "celltype"
@@ -86,7 +86,7 @@ doUMAP = FALSE
 # devtools::install_github("MarioniLab/StabMap")
 ###
 
-resFile = paste0(PATH,"mouse.gastrulation.benchmark.results.res2.5.pc15.1.5kfeats.seed.29072024.Rds")
+resFile = paste0(PATH,"mouse.gastrulation.benchmark.results.res1.5.pc15.2.5kfeats.seed.29072024.Rds")
 
 if (!file.exists(resFile)) {
   res = NULL
@@ -110,7 +110,7 @@ for (sim in names(nGenes_all)) {
     nPCs = 20
     k.param = 30
   } else {
-    nPCs = 40
+    nPCs = 15
     k.param = 20
   }
   
@@ -141,7 +141,7 @@ for (sim in names(nGenes_all)) {
       querySCE <- RunPCA(querySCE, features = VariableFeatures(object = querySCE), npcs = nPCs)
       querySCE <- RunUMAP(querySCE, features = VariableFeatures(object = querySCE))
       querySCE <- FindNeighbors(querySCE, dims = seq(nPCs), k.param = k.param)
-      querySCE <- FindClusters(querySCE, resolution = 3.5, method = 4)
+      querySCE <- FindClusters(querySCE, resolution = 1.5, method = 4)
       querySCE <- querySCE[genes,]
       # Compute base accuracy by cluster 
       querySCE@meta.data$assign = ""
@@ -162,8 +162,6 @@ for (sim in names(nGenes_all)) {
       Idents(SCE_list[[1]]) <- SCE_list[[1]]$celltype
       Idents(SCE_list[[2]]) <- SCE_list[[2]]$seurat_clusters
       sim.results <- ClusterFoldSimilarity::clusterFoldSimilarity(scList = SCE_list, sampleNames = names(SCE_list), parallel = T, nSubsampling = 20)
-      
-      sim.community <- ClusterFoldSimilarity::findCommunitiesSimmilarity(sim.results)
       
       tmp1 <- sim.results[sim.results$datasetL == "Query",c("clusterL","clusterR")]
       tmp2 <- querySCE@meta.data[,c("seurat_clusters", "celltype")]
@@ -328,9 +326,21 @@ res.t$type <- factor(res.t$type)
 res.t$genes <- factor(res.t$genes)
 res.t$referenceSample <- factor(res.t$referenceSample)
 
+ggplot(res.t, aes(x=genes, y=Accuracy, fill = type, color=type)) +
+  geom_boxplot() +
+  theme_minimal() +
+  xlab("n. of genes") +
+  #ylim(0.25,1) +
+  ggplot2::scale_y_continuous(breaks =  seq(0.30, 1, by=0.1), labels = as.character(seq(0.30, 1, by=0.1))) +
+  scale_fill_manual(values = RColorBrewer::brewer.pal(length(levels(res.t$type)), "Pastel1")) +# Pastel2
+  scale_color_manual(values = RColorBrewer::brewer.pal(length(levels(res.t$type)), "Pastel1")) # Pastel2
+
+# check specific sims
+#res.t %>% dplyr::filter(genes==1500 & type == "ClusterFoldSimilarity") %>% summarise(mean(Accuracy))
+#res.t %>% dplyr::filter(genes==1500 & type == "ClusterFoldSimilarity") %>% pull(Accuracy) %>% summary()
 # Barplot with means
 means.all <- res.t %>% group_by(type, genes) %>% summarise(accuracy=mean(Accuracy), sd=sd(Accuracy)/sqrt(length(Accuracy)))
-pdf(file = "/ClusterFoldSimilarity/barplot.means.gastrulation.acc.pdf", width = 10,height = 2.2)
+pdf(file = "/Users/oscargonzalezvelasco/Desktop/ClusterFoldSimilarity/review/barplot.means.gastrulation.acc.pdf", width = 10,height = 2.2)
 g <- ggplot(means.all, aes(x=genes, y=accuracy, fill = type)) +
   geom_bar(stat="identity", position = "dodge") +
   theme_minimal() +
