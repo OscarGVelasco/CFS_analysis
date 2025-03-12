@@ -9,7 +9,7 @@ PATH <- "/cluster_similarity_sc/"
 setwd(PATH)
 
 # Load pancreas data sets
-fname <- load("/cluster_similarity_sc/rdata/Pancreas_sc_objects_list_processed.RData");fname
+fname <- load(paste0(PATH, "rdata/Pancreas_sc_objects_list_processed.RData"));fname
 
 # Find and subset common cell types
 cellstypes <- names(table(sc_list_input[[1]]@colData$cell.type))[names(table(sc_list_input[[1]]@colData$cell.type)) %in% names(table(sc_list_input[[2]]@colData$cell.type))]
@@ -278,7 +278,7 @@ res.t$genes <- as.character(res.t$genes)
 res.t$genes <- factor(res.t$genes, levels = unique(res.t$genes))
 res.t$referenceSample <- factor(res.t$referenceSample)
 means.all <- res.t %>% dplyr::group_by(type, genes) %>% summarise(accuracy=mean(Accuracy),sd=sd(Accuracy)/sqrt(length(Accuracy)))
-pdf(file = "/ClusterFoldSimilarity/barplot.means.pancreas.acc.corr.distance.pdf", width = 10,height = 2.2)
+pdf(file = paste0(PATH, "barplot.means.pancreas.acc.corr.distance.pdf"), width = 10,height = 2.2)
 g <- ggplot(means.all, aes(x=genes, y=accuracy, fill = type)) +
   geom_bar(stat="identity", position = "dodge") +
   theme_minimal() +

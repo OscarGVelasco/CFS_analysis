@@ -26,7 +26,7 @@ df.mean <- df %>% group_by(cpus) %>% dplyr::summarize(Mean = mean(elapsed, na.rm
 df.minutes <- df %>% group_by(cpus) %>% dplyr::mutate(minutes = elapsed/60)
 
 library(ggplot2)
-pdf(file = "cluster_similarity_sc/benchmark/boxplot.mean.times.cpu.processing.3.datasets.750k.cells.pdf",width = 8, height = 4)
+pdf(file = paste0(PATH, "boxplot.mean.times.cpu.processing.3.datasets.750k.cells.pdf",width = 8, height = 4))
 g <- ggplot(df, aes(x=cpus, y=elapsed/60)) +
   geom_boxplot(col="#D5BADB") +
   geom_jitter(width = 0.1, col="#86608E") +
@@ -68,7 +68,7 @@ for(i in c(5000, 25000, 50000, 100000, 150000, 200000, 250000)){
 df$size2 <- as.integer(df$size*3)
 df$size2 <- factor(df$size2)
 
-pdf(file = "cluster_similarity_sc/benchmark/boxplot.mean.times.size.cells.processing.3.datasets.17.CPUs.pdf",width = 8, height = 4)
+pdf(file = paste0(PATH, "boxplot.mean.times.size.cells.processing.3.datasets.17.CPUs.pdf",width = 8, height = 4))
 g <- ggplot(df, aes(x=size2, y=elapsed)) +
   geom_boxplot(col="#E5D8BD") +
   geom_jitter(width = 0.1, col="#A65628",size=2) +

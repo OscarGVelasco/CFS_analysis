@@ -9,7 +9,7 @@ library(dplyr)
 library(ggplot2)
 library(biomaRt)
 library(SingleR)
-MASTERPATH <- "/omics/groups/OE0436/internal/o872o/KIF5A_analysis/"
+MASTERPATH <- "/SET_PATH/"
 setwd(MASTERPATH)
 PATH="cellRanger_data/"
 
@@ -91,7 +91,7 @@ interest_id <- all_merged@meta.data %>% dplyr::filter(cell.type %in% c("group 1"
                                                                        "2","3","4","5","7","8","10","11","13","16","17","20")) %>% rownames()
 all_merged_neurons_astro <- all_merged[, interest_id]
 DimPlot(all_merged_neurons_astro, group.by = "cell.type", label = T)
-save(all_merged_neurons_astro, file = "/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/rdata/all_merged_neurons_astro_only.RData")
+save(all_merged_neurons_astro, file = paste0(MASTERPATH, "all_merged_neurons_astro_only.RData"))
 
 
 ##################################################################
@@ -106,7 +106,6 @@ labels$cell.type[labels$cell.type %in% c("group 1")] <- "astrocyte group 1"
 labels$cell.type[labels$cell.type %in% c("group 2")] <- "astrocyte group 2"
 labels$cell.type[labels$cell.type %in% c("group 3")] <- "astrocyte group 3"
 
-#meta <- data.frame(labels = labels, row.names = rownames(all_merged_neurons_astro@meta.data)) # create a dataframe of the cell labels
 cellchat <- createCellChat(object = data.input, meta = labels, group.by = "cell.type")
 cellchat <- addMeta(cellchat, meta = labels, meta.name = "cell.type")
 cellchat <- setIdent(cellchat, ident.use = "cell.type") # set "labels" as default cell identity
@@ -122,7 +121,6 @@ showDatabaseCategory(CellChatDB)
 cellchat@DB <- CellChatDB
 # subset the expression data of signaling genes for saving computation cost
 cellchat <- subsetData(cellchat) # This step is necessary even if using the whole database
-#future::plan("multiprocess", workers = 4) # do parallel
 future::multisession("multiprocess", workers = 16)
 #
 cellchat <- identifyOverExpressedGenes(cellchat)

@@ -1,15 +1,13 @@
 #!/usr/bin/env Rscript
 ### BENCHMARKING PARTY **
-# Blablablabla---
 library(Seurat)
 library(SeuratObject)
 library(ClusterFoldSimilarity)
 library(Matrix)
 
-PATH <- "/home/o872o/o872o/cluster_similarity_sc/benchmark/"
+PATH <- "/SET_PATH/"
 # data dimensions
 nfeatures <- 5000; ncells <- 250000
-#nfeatures <- 2000; ncells <- 4000
 # single-cell 1
 counts <- Matrix::Matrix(rpois(n=nfeatures * ncells, lambda=1), nfeatures, sparse = TRUE)
 gc()
@@ -75,10 +73,8 @@ for (i in seq(9, 56, by=2)){
   #inception.list[[i]] <- time
   save(time, file = file.path(PATH, paste0("time.3.datasets.CPU.",i,".RData")))
 }
-# save(inception.list, file = "/home/o872o/o872o/cluster_similarity_sc/benchmark/time.benchmarking.results.RData")
 
-#head(similarityTable)
-# load(file = "/home/o872o/o872o/cluster_similarity_sc/benchmark/time.benchmarking.results.RData")
+# load(file = paste0(PATH, "time.benchmarking.results.RData"))
 # inception.list <- cbind.data.frame(do.call("rbind", inception.list),cpus=seq(1,56,by=2))
 # library(ggplot2)
 # ggplot(inception.list, aes(x=cpus,y=elapsed/60)) +

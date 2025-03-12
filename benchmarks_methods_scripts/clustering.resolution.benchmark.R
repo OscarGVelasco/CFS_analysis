@@ -1,9 +1,9 @@
 PATH <- "/cluster_similarity_sc/"
 setwd(PATH)
 library(dplyr)
-source("/cluster_similarity_sc/initialice.R")
+source("./initialice.R")
 
-fname <- load("/cluster_similarity_sc/rdata/Pancreas_sc_objects_list_processed.RData");fname
+fname <- load(paste0(PATH,"rdata/Pancreas_sc_objects_list_processed.RData"));fname
 
 cellstypes <- names(table(sc_list_input[[1]]@colData$cell.type))[names(table(sc_list_input[[1]]@colData$cell.type)) %in% names(table(sc_list_input[[2]]@colData$cell.type))]
 
@@ -90,4 +90,4 @@ for(resol in c(0.6, 1, 1.4, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.4)){
   }  
 
 saveRDS(results_reso, 
-        file = "/cluster_similarity_sc/clustering.resolution.and.pca.benchmark.pancreas.multi.1500.genes.Rds")
+        file = paste0(PATH, "clustering.resolution.and.pca.benchmark.pancreas.multi.1500.genes.Rds"))

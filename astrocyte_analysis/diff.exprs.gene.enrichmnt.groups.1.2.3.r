@@ -1,11 +1,10 @@
 library(gprofiler2)
 
 ######################### - Load Point - ##########################
-fileName <- load(file = paste0("/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/","mice.Kif5a.controls.data.cortex.spinalcord.processed.6.samples.RData"))
+fileName <- load(file = paste0(MASTERPATH, "controls.data.cortex.spinalcord.processed.6.samples.RData"))
 sprintf(fileName)
 
 ### Merged Analysis
-
 sc_list2[[1]]@meta.data$tissue <- "spinal cord"
 sc_list2[[2]]@meta.data$tissue <- "spinal cord"
 sc_list2[[3]]@meta.data$tissue <- "spinal cord"
@@ -15,7 +14,6 @@ sc_list2[[6]]@meta.data$tissue <- "cortex"
 # Group definition by similarity graph groups:
 sc_list2 <- lapply(sc_list2,function(x){
   x@meta.data$group <- "group 3"
-  #x@meta.data$group2 <- NA
   return(x)})
 # Group 1
 sc_list2[[1]]@meta.data[sc_list2[[1]]@meta.data$seurat_clusters %in% c(5),]$group <- "group 1"
@@ -37,7 +35,7 @@ sc_list2[[6]]@meta.data[sc_list2[[6]]@meta.data$seurat_clusters %in% c(5,3),]$gr
 
 astrocyte_seurat_objects_mc_sc <- sc_list2
 ######################### - Save Point - ##########################
-save(astrocyte_seurat_objects_mc_sc, file = paste0("/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/rdata/","mice.Kif5a.controls.data.cortex.spinalcord.processed.6.samples.astrocytes.labeled.RData"))
+save(astrocyte_seurat_objects_mc_sc, file = paste0(MASTERPATH, "mice.controls.data.cortex.spinalcord.processed.6.samples.astrocytes.labeled.RData"))
 ######################### - Save Point - ##########################
 astrocyte_seurat_objects_mc_sc <- NULL
 
@@ -79,7 +77,7 @@ DimPlot(all_merged,group.by = "group", cols = c("#F08080","#F2D377","#7EB6D9","#
 
 # Save subset of group 3 for Monocle
 spinalc_cortex_controls_group3_merged <- subset(all_merged, subset = group == "group 3")
-save(spinalc_cortex_controls_group3_merged, file = "/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/spinalc_cortex_controls_group3_merged.Rdata")
+save(spinalc_cortex_controls_group3_merged, file = paste0(MASTERPATH, "spinalc_cortex_controls_group3_merged.Rdata"))
 
 sc_list2.group3 <- lapply(sc_list2,function(x){
   x <- subset(x, subset = group == "group 3") 
@@ -116,10 +114,10 @@ sc_list2.group3 <- RunPCA(sc_list2.group3, features = VariableFeatures(object = 
 sc_list2.group3 <- RunUMAP(sc_list2.group3, features = VariableFeatures(object = sc_list2.group3))
 DimPlot(sc_list2.group3, group.by = "group2")
 
-save(sc_list2.group3, file = "/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/spinalcord.only.list2.group3.merged.Rdata")
+save(sc_list2.group3, file = paste0(MASTERPATH, "spinalcord.only.list2.group3.merged.Rdata"))
 
 ####### Transcription Factor List
-tf.mice <- read.table(file = "/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/Mus_musculus_TF.txt",header = T,sep = "\t")
+tf.mice <- read.table(file = paste0(MASTERPATH, "/Mus_musculus_TF.txt",header = T,sep = "\t"))
 
 ## Spinal cord vs Cortex
 astro.Control.sc.vs.ctx <- FindMarkers(SetIdent(all_merged, value = "tissue"), ident.1 = "spinal cord",ident.2 = "cortex",
@@ -188,7 +186,7 @@ multiViolines(geneList = intersect(rownames(group1.astro.Control.sc.vs.ctx.POS),
 
 c("Cdk4", "Sirt2", "Dab1") %in% (group1.astro.Control.1.vs.all %>% filter(p_val_adj < 0.005) %>% rownames())
 write.table(x = group1.astro.Control.1.vs.all %>% filter(p_val_adj < 0.005), sep = "\t",
-            file = "/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/table_results/group1.astro.Control.1.vs.all.significant.txt")
+            file = paste0(MASTERPATH, "group1.astro.Control.1.vs.all.significant.txt"))
 
 gostres.pos <- gprofiler2::gost(query = c(group1.astro.Control.1.vs.all %>% filter(p_val_adj < 0.005 & avg_log2FC > 0) %>% rownames()), 
                     organism = "mmusculus", ordered_query = FALSE, 
@@ -270,11 +268,9 @@ which(indx %in% markers.group.1.common)
 
 group1.astro.Control.1.vs.2 <- FindMarkers(SetIdent(all_merged,value = "group"),ident.1 = "group 1", ident.2 = "group 2",
                                              test.use = "negbinom", latent.vars = "tissue")
-                                             # min.pct = -Inf, logfc.threshold = -Inf, min.cells.feature = 1, min.cells.group = 1,
-                                             # densify=TRUE)
 
 write.table(x = group1.astro.Control.1.vs.2 %>% filter(p_val_adj < 0.005), sep = "\t",
-            file = "/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/table_results/group1and2.astro.Control.1.vs.2.significant.txt")
+            file = paste0(MASTERPATH, "group1and2.astro.Control.1.vs.2.significant.txt"))
 
 group1.astro.Control.1.vs.2[c("Unc13c","Agt","Ascl1"),]
 group1.astro.Control.1.vs.all[c("Unc13c","Agt","Ascl1"),]
@@ -313,9 +309,7 @@ gseaDat <- cbind.data.frame(group1.astro.Control.1.vs.all[genes_hgn$external_gen
 gseaDat <- gseaDat[!is.na(gseaDat$entrezgene_id),]
 #
 ranks <- sign(gseaDat$avg_log2FC) * -log10(gseaDat$p_val)
-#ranks <- sign(group1.astro.Control.1.vs.all$avg_log2FC) * -log10(group1.astro.Control.1.vs.all$p_val)
 names(ranks) <- gseaDat$entrezgene_id
-#names(ranks) <- rownames(gseaDat)
 ranks <- ranks[!(is.infinite(ranks)|is.na(ranks))]
 head(ranks)
 barplot(sort(ranks, decreasing = T))
@@ -420,7 +414,7 @@ genedes <- mouse_genes_description(rownames(group2.astro.Control.2.vs.all))
 group2.astro.Control.2.vs.all$description <- genedes[rownames(group2.astro.Control.2.vs.all),]$description
 
 write.table(x = group2.astro.Control.2.vs.all %>% filter(p_val_adj < 0.005), sep = "\t",
-            file = "/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/table_results/group2.astro.Control.2.vs.all.significant.txt")
+            file = paste0(MASTERPATH, "group2.astro.Control.2.vs.all.significant.txt"))
 
 gostres.pos <- gost(query = c(group2.astro.Control.2.vs.all %>% filter(p_val_adj < 0.005 & avg_log2FC > 0) %>% rownames()), 
                     organism = "mmusculus", ordered_query = FALSE, 
@@ -450,7 +444,7 @@ genedes <- mouse_genes_description(rownames(group3.astro.Control.3.vs.all))
 group3.astro.Control.3.vs.all$description <- genedes[rownames(group3.astro.Control.3.vs.all),]$description
 
 write.table(x = group3.astro.Control.3.vs.all %>% filter(p_val_adj < 0.005), sep = "\t",
-            file = "/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/table_results/group3.astro.Control.3.vs.all.significant.txt")
+            file = paste0("group3.astro.Control.3.vs.all.significant.txt"))
 
 group3.astro.Control.3.vs.all %>% 
   filter(p_val_adj < 0.005 & row.names(group3.astro.Control.3.vs.all) %in% tf.mice$Symbol & avg_log2FC >0) %>% rownames()

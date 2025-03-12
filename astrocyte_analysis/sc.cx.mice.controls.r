@@ -7,6 +7,7 @@ library(dplyr)
 library(ggplot2)
 library(biomaRt)
 library(SingleR)
+# Set folder to load and save data/plots
 MASTERPATH <- "/SET_FOLDER/"
 setwd(MASTERPATH)
 PATH="cellRanger_data/"
@@ -133,9 +134,9 @@ Seurat::DimPlot(sc_list2[[6]])
 names(sc_list2) <- c("sc.36","sc.26","sc.699","cx.36","cx.26","cx.699")
 
 ######################### - Save Point - ##########################
-# save(sc_list2, file = paste0("/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/","mice.controls.data.cortex.spinalcord.processed.6.samples.RData"))
+# save(sc_list2, file = paste0(MASTERPATH, "mice.controls.data.cortex.spinalcord.processed.6.samples.RData"))
 ######################### - Save Point - ##########################
-fileName <- load(file = paste0("/omics/groups/OE0436/internal/o872o/cluster_similarity_sc/","mice.controls.data.cortex.spinalcord.processed.6.samples.RData"));fileName
+fileName <- load(file = paste0(MASTERPATH, "mice.controls.data.cortex.spinalcord.processed.6.samples.RData"));fileName
 sprintf(fileName)
 
 table(sc_list2[[1]]@meta.data$seurat_clusters) *1/3
@@ -485,9 +486,7 @@ violin.per.clusters <- function(obj,clust,gene){
                  geom = "crossbar", 
                  width = 0.2,
                  colour = "black") +
-    #geom_point(alpha = 0.5, position= position_jitter(width = 0.5)) + #position_jitter(height=.5, width=.5)) +
     theme_minimal() + 
-    #theme(legend.position = "none") + 
     xlab("")
   return(g)
 }
